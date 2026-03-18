@@ -12,7 +12,7 @@ struct MenuBarLabelView: View {
                 primaryColor: AppTheme.tint(for: snapshot.provider),
                 secondaryColor: AppTheme.accent(for: snapshot.provider)
             )
-            .frame(width: 20, height: 11)
+            .frame(width: 24, height: 8)
 
             Text(TokenFormatters.percentageString(for: snapshot.fiveHour.utilization))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -51,15 +51,22 @@ struct DualUsageBars: View {
             let width = proxy.size.width
             let topWidth = width * CGFloat(min(primary ?? 0, 1))
             let bottomWidth = width * CGFloat(min(secondary ?? 0, 1))
+            let barCornerRadius = CGFloat(1.6)
 
             VStack(spacing: 2) {
                 ZStack(alignment: .leading) {
-                    Capsule().fill(AppTheme.track)
-                    Capsule().fill(primaryColor).frame(width: topWidth)
+                    RoundedRectangle(cornerRadius: barCornerRadius, style: .continuous)
+                        .fill(AppTheme.track)
+                    RoundedRectangle(cornerRadius: barCornerRadius, style: .continuous)
+                        .fill(primaryColor)
+                        .frame(width: topWidth)
                 }
                 ZStack(alignment: .leading) {
-                    Capsule().fill(AppTheme.track)
-                    Capsule().fill(secondaryColor).frame(width: bottomWidth)
+                    RoundedRectangle(cornerRadius: barCornerRadius, style: .continuous)
+                        .fill(AppTheme.track)
+                    RoundedRectangle(cornerRadius: barCornerRadius, style: .continuous)
+                        .fill(secondaryColor)
+                        .frame(width: bottomWidth)
                 }
             }
         }
