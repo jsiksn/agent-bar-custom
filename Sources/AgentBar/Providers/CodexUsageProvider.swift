@@ -151,8 +151,7 @@ struct CodexUsageProvider: UsageProviding {
     }
 
     private func runAppServerRateLimitRequest() throws -> [String: Any] {
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
-        let codexBinary = homeDirectory.appendingPathComponent(".bun/bin/codex")
+        let codexBinary = try resolveCodexBinary()
         let nodeBinary = try resolveNodeBinary()
         let escapedCodexPath = codexBinary.path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
         let escapedNodePath = nodeBinary.path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
@@ -220,6 +219,21 @@ print(json.dumps(found))
             throw CodexUsageError.appServer((error["message"] as? String) ?? "Codex app-server error")
         }
         return response
+    }
+
+    private func resolveCodexBinary() throws -> URL {
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let candidates = [
+            homeDirectory.appendingPathComponent(".bun/bin/codex"),
+            URL(fileURLWithPath: "/opt/homebrew/bin/codex"),
+            URL(fileURLWithPath: "/usr/local/bin/codex"),
+        ]
+
+        if let match = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) {
+            return match
+        }
+
+        throw CodexUsageError.appServer("Codex 실행 파일을 찾지 못했습니다.")
     }
 
     private func resolveNodeBinary() throws -> URL {
