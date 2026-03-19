@@ -6,7 +6,10 @@ final class AgentBarAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
-        coordinator = StatusBarCoordinator(store: AppContainer.shared.store)
+        coordinator = StatusBarCoordinator(
+            store: AppContainer.shared.store,
+            providers: AppContainer.shared.availableProviders
+        )
     }
 }
 

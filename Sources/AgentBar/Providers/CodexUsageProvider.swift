@@ -3,36 +3,41 @@ import SQLite3
 
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+private enum CodexUsagePolicy {
+    static let successCacheTTL: TimeInterval = 60
+    static let failureCacheTTL: TimeInterval = 15
+}
+
 struct CodexUsageProvider: UsageProviding {
     func load() async -> ProviderSnapshot {
         await Task.detached(priority: .utility) {
             let localData = (try? scanLocalLogs()) ?? .empty
 
             do {
-                let remoteData = try fetchAccountRateLimits()
+                let remoteResult = try resolveRemoteRateLimits()
                 return ProviderSnapshot(
                     provider: .codex,
-                    updatedAt: .now,
+                    updatedAt: remoteResult.updatedAt,
                     fiveHour: WindowSummary(
-                        tokens: remoteData.fiveHourUsedPercent,
+                        tokens: remoteResult.data.fiveHourUsedPercent,
                         limitTokens: 100,
-                        resetAt: remoteData.fiveHourResetAt,
+                        resetAt: remoteResult.data.fiveHourResetAt,
                         displayStyle: .percentage
                     ),
                     weekly: WindowSummary(
-                        tokens: remoteData.weeklyUsedPercent,
+                        tokens: remoteResult.data.weeklyUsedPercent,
                         limitTokens: 100,
-                        resetAt: remoteData.weeklyResetAt,
+                        resetAt: remoteResult.data.weeklyResetAt,
                         displayStyle: .percentage
                     ),
-                    planName: remoteData.planName,
+                    planName: remoteResult.data.planName,
                     todayTokens: localData.todayTokens,
                     monthTokens: localData.monthTokens,
                     recentSessions: localData.recentSessions,
                     modelBreakdown: localData.modelBreakdown,
                     sourceDescription: "Codex app-server account/rateLimits/read + ~/.codex",
-                    note: "상단 bar는 Codex 계정 전체 rate limits 기준이며, 아래 토큰/세션은 This Mac 로그 기준입니다.",
-                    isStale: false
+                    note: remoteResult.note,
+                    isStale: remoteResult.isStale
                 )
             } catch {
                 return ProviderSnapshot(
@@ -53,6 +58,82 @@ struct CodexUsageProvider: UsageProviding {
         }.value
     }
 
+    private func resolveRemoteRateLimits() throws -> RemoteRateLimitResult {
+        let cache = CodexUsageCache()
+        let now = Date.now
+
+        if let cacheState = try? cache.readState(now: now), cacheState.isFresh {
+            return RemoteRateLimitResult(
+                data: cacheState.data,
+                updatedAt: cacheState.updatedAt,
+                note: note(for: cacheState.data),
+                isStale: cacheState.data.apiUnavailable
+            )
+        }
+
+        do {
+            let remoteData = try fetchAccountRateLimits()
+            try? cache.write(
+                data: remoteData,
+                timestamp: now,
+                lastGoodData: remoteData,
+                lastGoodTimestamp: now
+            )
+            return RemoteRateLimitResult(
+                data: remoteData,
+                updatedAt: now,
+                note: note(for: remoteData),
+                isStale: false
+            )
+        } catch {
+            let previousCache = try? cache.readRaw()
+            let goodState = cache.makeLastGoodState(from: previousCache)
+            let failureData = RemoteRateLimitData(
+                planName: goodState?.data.planName,
+                fiveHourUsedPercent: 0,
+                weeklyUsedPercent: 0,
+                fiveHourResetAt: nil,
+                weeklyResetAt: nil,
+                apiUnavailable: true,
+                apiError: error.localizedDescription
+            )
+
+            try? cache.write(
+                data: failureData,
+                timestamp: now,
+                lastGoodData: goodState?.data,
+                lastGoodTimestamp: goodState?.updatedAt
+            )
+
+            if let goodState {
+                let displayData = goodState.data.with(apiUnavailable: true, apiError: error.localizedDescription)
+                return RemoteRateLimitResult(
+                    data: displayData,
+                    updatedAt: goodState.updatedAt,
+                    note: note(for: displayData),
+                    isStale: true
+                )
+            }
+
+            return RemoteRateLimitResult(
+                data: failureData,
+                updatedAt: now,
+                note: note(for: failureData),
+                isStale: true
+            )
+        }
+    }
+
+    private func note(for data: RemoteRateLimitData) -> String {
+        if data.apiUnavailable {
+            if let apiError = data.apiError {
+                return "Codex rate limits를 읽지 못해 최근 정상값을 유지합니다 (\(apiError)). 아래 토큰/세션은 This Mac 로그 기준입니다."
+            }
+            return "Codex rate limits를 읽지 못해 최근 정상값을 유지합니다. 아래 토큰/세션은 This Mac 로그 기준입니다."
+        }
+        return "상단 bar는 Codex 계정 전체 rate limits 기준이며, claude-hud 방식의 success/failure cache를 적용합니다. 아래 토큰/세션은 This Mac 로그 기준입니다."
+    }
+
     private func fetchAccountRateLimits() throws -> RemoteRateLimitData {
         let response = try runAppServerRateLimitRequest()
         let data = try JSONSerialization.data(withJSONObject: response)
@@ -63,7 +144,9 @@ struct CodexUsageProvider: UsageProviding {
             fiveHourUsedPercent: payload.result.rateLimits.primary?.usedPercent ?? 0,
             weeklyUsedPercent: payload.result.rateLimits.secondary?.usedPercent ?? 0,
             fiveHourResetAt: payload.result.rateLimits.primary?.resetsAtDate,
-            weeklyResetAt: payload.result.rateLimits.secondary?.resetsAtDate
+            weeklyResetAt: payload.result.rateLimits.secondary?.resetsAtDate,
+            apiUnavailable: false,
+            apiError: nil
         )
     }
 
@@ -316,12 +399,33 @@ private struct LocalUsageData {
     )
 }
 
-private struct RemoteRateLimitData {
+private struct RemoteRateLimitData: Codable {
     let planName: String?
     let fiveHourUsedPercent: Int
     let weeklyUsedPercent: Int
     let fiveHourResetAt: Date?
     let weeklyResetAt: Date?
+    let apiUnavailable: Bool
+    let apiError: String?
+
+    func with(apiUnavailable: Bool, apiError: String?) -> RemoteRateLimitData {
+        RemoteRateLimitData(
+            planName: planName,
+            fiveHourUsedPercent: fiveHourUsedPercent,
+            weeklyUsedPercent: weeklyUsedPercent,
+            fiveHourResetAt: fiveHourResetAt,
+            weeklyResetAt: weeklyResetAt,
+            apiUnavailable: apiUnavailable,
+            apiError: apiError
+        )
+    }
+}
+
+private struct RemoteRateLimitResult {
+    let data: RemoteRateLimitData
+    let updatedAt: Date
+    let note: String
+    let isStale: Bool
 }
 
 private struct CodexRateLimitResponse: Decodable {
@@ -360,6 +464,98 @@ private enum CodexUsageError: LocalizedError {
         case .appServer(let message):
             return message
         }
+    }
+}
+
+private struct CodexUsageCacheRecord: Codable {
+    let data: RemoteRateLimitData
+    let timestamp: Date
+    let lastGoodData: RemoteRateLimitData?
+    let lastGoodTimestamp: Date?
+}
+
+private struct CodexUsageCacheState {
+    let data: RemoteRateLimitData
+    let updatedAt: Date
+    let isFresh: Bool
+}
+
+private struct CodexUsageCache {
+    private let fileManager = FileManager.default
+
+    private var cacheURL: URL {
+        let base = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".agentbar", isDirectory: true)
+        return base.appendingPathComponent("codex-rate-limits-cache.json")
+    }
+
+    func readRaw() throws -> CodexUsageCacheRecord {
+        let data = try Data(contentsOf: cacheURL)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(CodexUsageCacheRecord.self, from: data)
+    }
+
+    func readState(now: Date) throws -> CodexUsageCacheState {
+        let cache = try readRaw()
+        let displayState = displayState(from: cache)
+        let ttl = cache.data.apiUnavailable ? CodexUsagePolicy.failureCacheTTL : CodexUsagePolicy.successCacheTTL
+        return CodexUsageCacheState(
+            data: displayState.data,
+            updatedAt: displayState.updatedAt,
+            isFresh: now.timeIntervalSince(cache.timestamp) < ttl
+        )
+    }
+
+    func makeLastGoodState(from cache: CodexUsageCacheRecord?) -> CodexUsageCacheState? {
+        guard let cache else { return nil }
+        if cache.data.apiUnavailable == false {
+            return CodexUsageCacheState(data: cache.data, updatedAt: cache.timestamp, isFresh: false)
+        }
+        guard let lastGoodData = cache.lastGoodData else { return nil }
+        return CodexUsageCacheState(
+            data: lastGoodData,
+            updatedAt: cache.lastGoodTimestamp ?? cache.timestamp,
+            isFresh: false
+        )
+    }
+
+    func write(
+        data: RemoteRateLimitData,
+        timestamp: Date,
+        lastGoodData: RemoteRateLimitData? = nil,
+        lastGoodTimestamp: Date? = nil
+    ) throws {
+        let record = CodexUsageCacheRecord(
+            data: data,
+            timestamp: timestamp,
+            lastGoodData: lastGoodData,
+            lastGoodTimestamp: lastGoodTimestamp
+        )
+        let directory = cacheURL.deletingLastPathComponent()
+        if fileManager.fileExists(atPath: directory.path) == false {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(record)
+        try data.write(to: cacheURL, options: .atomic)
+    }
+
+    private func displayState(from cache: CodexUsageCacheRecord) -> CodexUsageCacheState {
+        if cache.data.apiUnavailable, let lastGoodData = cache.lastGoodData {
+            return CodexUsageCacheState(
+                data: lastGoodData.with(apiUnavailable: true, apiError: cache.data.apiError),
+                updatedAt: cache.lastGoodTimestamp ?? cache.timestamp,
+                isFresh: false
+            )
+        }
+
+        return CodexUsageCacheState(
+            data: cache.data,
+            updatedAt: cache.timestamp,
+            isFresh: false
+        )
     }
 }
 

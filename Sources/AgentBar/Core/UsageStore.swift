@@ -9,6 +9,7 @@ final class UsageStore: ObservableObject {
     @Published private(set) var isRefreshing = false
 
     private let settings: AppSettings
+    private let availableProviders: Set<ProviderKind>
     private let claudeProvider = ClaudeUsageProvider()
     private let codexProvider = CodexUsageProvider()
 
@@ -16,8 +17,9 @@ final class UsageStore: ObservableObject {
     private var refreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
-    init(settings: AppSettings) {
+    init(settings: AppSettings, availableProviders: [ProviderKind]) {
         self.settings = settings
+        self.availableProviders = Set(availableProviders)
         bindSettings()
         configureTimer()
         refreshNow()
@@ -39,14 +41,21 @@ final class UsageStore: ObservableObject {
         refreshTask = Task { [weak self] in
             guard let self else { return }
 
-            async let claude = claudeProvider.load()
-            async let codex = codexProvider.load()
-            let (claudeSnapshot, codexSnapshot) = await (claude, codex)
+            var nextClaudeSnapshot = self.claudeSnapshot
+            var nextCodexSnapshot = self.codexSnapshot
+
+            if availableProviders.contains(.claude) {
+                nextClaudeSnapshot = await claudeProvider.load()
+            }
+
+            if availableProviders.contains(.codex) {
+                nextCodexSnapshot = await codexProvider.load()
+            }
 
             guard Task.isCancelled == false else { return }
 
-            self.claudeSnapshot = claudeSnapshot
-            self.codexSnapshot = codexSnapshot
+            self.claudeSnapshot = nextClaudeSnapshot
+            self.codexSnapshot = nextCodexSnapshot
             self.lastRefresh = .now
             self.isRefreshing = false
             self.refreshTask = nil

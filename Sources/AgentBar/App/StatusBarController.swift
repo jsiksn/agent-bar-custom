@@ -6,8 +6,8 @@ import SwiftUI
 final class StatusBarCoordinator {
     private let controllers: [StatusBarController]
 
-    init(store: UsageStore) {
-        self.controllers = ProviderKind.allCases.map { StatusBarController(provider: $0, store: store) }
+    init(store: UsageStore, providers: [ProviderKind]) {
+        self.controllers = providers.map { StatusBarController(provider: $0, store: store) }
         _ = controllers
     }
 }
