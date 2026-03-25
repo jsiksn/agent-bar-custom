@@ -19,15 +19,15 @@ struct SettingsView: View {
             }
 
             Section("Notes") {
-                Text("상단 5시간/주간 퍼센트는 Claude와 Codex 계정에서 직접 조회합니다.")
+                Text("The top 5-hour and weekly percentages come directly from your Claude and Codex accounts.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
 
-                Text("팝오버의 This Mac 토큰 요약과 최근 세션은 이 Mac에 남은 로컬 로그를 보조 정보로 보여줍니다.")
+                Text("The This Mac token summaries and recent sessions in the popover are based on local logs on this Mac.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
 
-                Text("Claude usage API는 짧은 간격으로 반복 호출하면 제한될 수 있어서, 낮은 갱신 주기는 큰 의미가 없습니다.")
+                Text("The Claude usage API can be rate-limited if polled too frequently, so very short refresh intervals are usually not useful.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
             }

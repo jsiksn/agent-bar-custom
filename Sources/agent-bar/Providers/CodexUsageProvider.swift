@@ -51,7 +51,7 @@ struct CodexUsageProvider: UsageProviding {
                     recentSessions: localData.recentSessions,
                     modelBreakdown: localData.modelBreakdown,
                     sourceDescription: "Codex app-server account/rateLimits/read + ~/.codex",
-                    note: "Codex account rate limits를 읽지 못했습니다: \(error.localizedDescription)",
+                    note: "Couldn't read Codex account rate limits: \(error.localizedDescription)",
                     isStale: true
                 )
             }
@@ -127,11 +127,11 @@ struct CodexUsageProvider: UsageProviding {
     private func note(for data: RemoteRateLimitData) -> String {
         if data.apiUnavailable {
             if let apiError = data.apiError {
-                return "Codex rate limits를 읽지 못해 최근 정상값을 유지합니다 (\(apiError)). 아래 토큰/세션은 This Mac 로그 기준입니다."
+                return "Couldn't read Codex rate limits. Showing the last known good value (\(apiError)). The token and session details below are from This Mac logs."
             }
-            return "Codex rate limits를 읽지 못해 최근 정상값을 유지합니다. 아래 토큰/세션은 This Mac 로그 기준입니다."
+            return "Couldn't read Codex rate limits. Showing the last known good value. The token and session details below are from This Mac logs."
         }
-        return "상단 bar는 Codex 계정 전체 rate limits 기준이며, claude-hud 방식의 success/failure cache를 적용합니다. 아래 토큰/세션은 This Mac 로그 기준입니다."
+        return "The top bars reflect account-wide Codex rate limits. The token and session details below are from This Mac logs."
     }
 
     private func fetchAccountRateLimits() throws -> RemoteRateLimitData {
@@ -212,7 +212,7 @@ print(json.dumps(found))
         guard let data = result.stdout.data(using: .utf8),
               let response = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             let trimmed = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw CodexUsageError.appServer(trimmed.isEmpty ? "Codex rate limit 응답을 찾지 못했습니다." : trimmed)
+            throw CodexUsageError.appServer(trimmed.isEmpty ? "Couldn't find a Codex rate limit response." : trimmed)
         }
 
         if let error = response["error"] as? [String: Any] {
@@ -233,7 +233,7 @@ print(json.dumps(found))
             return match
         }
 
-        throw CodexUsageError.appServer("Codex 실행 파일을 찾지 못했습니다.")
+        throw CodexUsageError.appServer("Couldn't find the Codex executable.")
     }
 
     private func resolveNodeBinary() throws -> URL {
@@ -249,7 +249,7 @@ print(json.dumps(found))
             return match
         }
 
-        throw CodexUsageError.appServer("Node 실행 파일을 찾지 못했습니다.")
+        throw CodexUsageError.appServer("Couldn't find the Node executable.")
     }
 
     private func scanLocalLogs() throws -> LocalUsageData {
@@ -600,7 +600,7 @@ private func runProcess(
 
     if group.wait(timeout: .now() + timeout) == .timedOut {
         process.terminate()
-        throw CodexUsageError.appServer("외부 프로세스가 \(Int(timeout))초 안에 끝나지 않았습니다.")
+        throw CodexUsageError.appServer("External process did not finish within \(Int(timeout)) seconds.")
     }
 
     let stdoutData = outputPipe.fileHandleForReading.readDataToEndOfFile()
@@ -610,7 +610,7 @@ private func runProcess(
 
     guard process.terminationStatus == 0 else {
         let message = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-        throw CodexUsageError.appServer(message.isEmpty ? "외부 프로세스가 실패했습니다." : message)
+        throw CodexUsageError.appServer(message.isEmpty ? "External process failed." : message)
     }
 
     return ProcessOutput(stdout: stdout, stderr: stderr)

@@ -106,7 +106,7 @@ struct ProviderSnapshot: Equatable {
             recentSessions: [],
             modelBreakdown: [],
             sourceDescription: provider.sourceDescription,
-            note: "계정 사용량을 아직 읽지 못했습니다.",
+            note: "Account usage has not loaded yet.",
             isStale: true
         )
     }

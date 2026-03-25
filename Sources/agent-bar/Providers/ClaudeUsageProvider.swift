@@ -51,7 +51,7 @@ struct ClaudeUsageProvider: UsageProviding {
                     recentSessions: localData.recentSessions,
                     modelBreakdown: localData.modelBreakdown,
                     sourceDescription: "Anthropic OAuth usage API + cache + ~/.claude/projects",
-                    note: "Anthropic 계정 usage를 읽지 못했습니다: \(error.localizedDescription)",
+                    note: "Couldn't read Anthropic account usage: \(error.localizedDescription)",
                     isStale: true
                 )
             }
@@ -151,11 +151,11 @@ struct ClaudeUsageProvider: UsageProviding {
     private func note(for data: RemoteUsageData) -> String {
         if data.apiUnavailable {
             if data.apiError == "rate-limited" {
-                return "Anthropic usage API가 rate limit 상태라 최근 정상값을 표시합니다. 잠시 후 자동 재시도합니다. 아래 토큰/세션은 This Mac 로그 기준입니다."
+                return "The Anthropic usage API is rate-limited. Showing the last known good value and retrying automatically. The token and session details below are from This Mac logs."
             }
-            return "Anthropic usage API를 읽지 못했습니다 (\(data.apiError ?? "unknown")). 아래 토큰/세션은 This Mac 로그 기준입니다."
+            return "Couldn't read the Anthropic usage API (\(data.apiError ?? "unknown")). The token and session details below are from This Mac logs."
         }
-        return "상단 bar는 Anthropic 계정 전체 usage API 기준입니다. Claude는 claude-hud 방식의 캐시/백오프를 적용하고, 아래 토큰/세션은 This Mac 로그 기준입니다."
+        return "The top bars reflect account-wide Anthropic usage API data. The token and session details below are from This Mac logs."
     }
 
     private func fetchUsageApi(accessToken: String) async -> UsageApiResult {
@@ -675,11 +675,11 @@ private enum ClaudeUsageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "잘못된 usage URL"
+            return "Invalid usage URL"
         case .missingCredentials:
-            return "Claude OAuth 토큰을 찾지 못했습니다."
+            return "Couldn't find a Claude OAuth token."
         case .keychainTimeout:
-            return "macOS Keychain 응답이 지연되었습니다."
+            return "macOS Keychain response timed out."
         }
     }
 }

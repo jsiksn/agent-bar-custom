@@ -101,7 +101,7 @@ struct ProviderPopoverView: View {
                 .foregroundStyle(.white.opacity(0.95))
 
             if snapshot.recentSessions.isEmpty {
-                Text("최근 세션이 없습니다.")
+                Text("No recent sessions.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.muted)
             } else {
@@ -134,7 +134,7 @@ struct ProviderPopoverView: View {
     private var footer: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(snapshot.isStale ? "최근 정상값 \(TokenFormatters.relativeUpdateString(updatedAt: snapshot.updatedAt))" : "마지막 갱신 \(TokenFormatters.relativeUpdateString(updatedAt: snapshot.updatedAt))")
+                Text(snapshot.isStale ? "Last good value \(TokenFormatters.relativeUpdateString(updatedAt: snapshot.updatedAt))" : "Last updated \(TokenFormatters.relativeUpdateString(updatedAt: snapshot.updatedAt))")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(AppTheme.muted)
                 Text(TokenFormatters.dateTimeString(snapshot.updatedAt))
@@ -209,7 +209,7 @@ private struct WindowCard: View {
             .font(.system(size: 11, weight: .medium, design: .rounded))
             .foregroundStyle(AppTheme.muted)
 
-            Text("Resets in \(TokenFormatters.resetString(resetAt: window.resetAt))")
+            Text(TokenFormatters.resetLabelString(resetAt: window.resetAt))
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.muted)
         }
