@@ -164,7 +164,7 @@ termios.tcsetattr(slave, termios.TCSANOW, attrs)
 process = subprocess.Popen(["\(escapedNodePath)", "\(escapedCodexPath)", "app-server", "--listen", "stdio://"], stdin=slave, stdout=slave, stderr=slave, text=False)
 os.close(slave)
 messages = [
-  {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"AgentBar","version":"0.1"},"capabilities":{"experimentalApi":True}}},
+  {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"agent-bar","version":"0.1"},"capabilities":{"experimentalApi":True}}},
   {"jsonrpc":"2.0","id":2,"method":"account/rateLimits/read","params":None},
 ]
 for message in messages:

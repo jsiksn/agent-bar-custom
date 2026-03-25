@@ -2,16 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "AgentBar",
+    name: "agent-bar",
     platforms: [
         .macOS(.v14),
     ],
     products: [
-        .executable(name: "AgentBar", targets: ["AgentBar"]),
+        .executable(name: "agent-bar", targets: ["agent_bar"]),
     ],
     targets: [
         .executableTarget(
-            name: "AgentBar",
+            name: "agent_bar",
+            path: "Sources/agent-bar",
             linkerSettings: [
                 .linkedLibrary("sqlite3"),
             ]

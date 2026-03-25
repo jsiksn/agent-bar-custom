@@ -1,6 +1,6 @@
-# AgentBar
+# agent-bar
 
-AgentBar is a macOS menu bar app for watching Claude Code and Codex usage at a glance.
+agent-bar is a macOS menu bar app for watching Claude Code and Codex usage at a glance.
 
 It shows compact 5-hour usage bars in the menu bar, and opens a detailed popover when clicked. The top bars are account-wide. The lower `This Mac` details come from local logs on the current machine.
 
@@ -19,16 +19,16 @@ It shows compact 5-hour usage bars in the menu bar, and opens a detailed popover
 - It does not require browser cookies to be pasted into the app
 - It does not merge local `This Mac` logs from multiple computers
 
-When the app is running, it periodically refreshes account-wide usage and local summaries. When the app is closed, Claude Code and Codex usage still continue to accumulate normally on their own services, and AgentBar will pick up the latest state the next time it launches.
+When the app is running, it periodically refreshes account-wide usage and local summaries. When the app is closed, Claude Code and Codex usage still continue to accumulate normally on their own services, and agent-bar will pick up the latest state the next time it launches.
 
 ## Supported Providers
 
-AgentBar treats Claude and Codex as optional providers.
+agent-bar treats Claude and Codex as optional providers.
 
 - Claude appears only if local Claude credentials are detectable
 - Codex appears only if a supported Codex CLI binary is detectable
 
-If a provider is missing, AgentBar does not show its menu bar item.
+If a provider is missing, agent-bar does not show its menu bar item.
 
 ## Requirements
 
@@ -52,7 +52,7 @@ Provider-specific requirements:
     - `/usr/local/bin/node`
     - `/usr/bin/node`
 
-If you install or log in to Claude Code or Codex after AgentBar is already running, restart AgentBar so provider detection runs again.
+If you install or log in to Claude Code or Codex after agent-bar is already running, restart agent-bar so provider detection runs again.
 
 ## Data Sources
 
@@ -108,17 +108,17 @@ This means:
 ## Installation
 
 ```bash
-git clone https://github.com/chenjingdev/AgentBar.git
-cd AgentBar
+git clone https://github.com/chenjingdev/agent-bar.git
+cd agent-bar
 swift build
 ```
 
 ## Running
 
-Run the debug binary directly:
+Run the app:
 
 ```bash
-./.build/debug/AgentBar
+swift run agent-bar
 ```
 
 On first launch:
@@ -128,7 +128,7 @@ On first launch:
 
 ## Using The App
 
-1. Launch `AgentBar`.
+1. Launch `agent-bar`.
 2. Look at the macOS menu bar.
 3. Available providers appear as compact items:
    - `CL` for Claude
@@ -174,13 +174,13 @@ Codex is considered available when:
 
 - A supported `codex` executable is found in one of the supported locations
 
-If a provider is not available at launch time, AgentBar hides it completely instead of showing a broken or empty menu bar item.
+If a provider is not available at launch time, agent-bar hides it completely instead of showing a broken or empty menu bar item.
 
 ## Privacy And Safety
 
 - No telemetry or analytics are built in
 - Credentials are read only from local machine sources
-- AgentBar does not require browser cookies
+- agent-bar does not require browser cookies
 - Claude and Codex usage caches are stored under `~/.agentbar/`
 
 Current cache files:
@@ -199,14 +199,14 @@ Claude:
 - Make sure Claude Code is installed
 - Make sure you are logged in
 - Confirm credentials exist in Keychain or `~/.claude/.credentials.json`
-- Restart AgentBar after logging in
+- Restart agent-bar after logging in
 
 Codex:
 
 - Make sure Codex CLI is installed
 - Make sure the `codex` executable exists in one of the supported paths
 - Make sure `node` exists in one of the supported paths
-- Restart AgentBar after installing or logging in
+- Restart agent-bar after installing or logging in
 
 ### A provider appears but the number looks stale
 
@@ -235,7 +235,7 @@ swift build
 Run after rebuilding:
 
 ```bash
-./.build/debug/AgentBar
+swift run agent-bar
 ```
 
 ## Current Limitations
